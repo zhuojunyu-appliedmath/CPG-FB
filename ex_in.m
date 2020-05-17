@@ -1,0 +1,146 @@
+% To plot Fig. 7/13/16/19: calculate external noise and internal noie
+
+function [ex,in]=ex_in(type,gsyn,gfb,initials,T0)
+% ex: external noise; in: internal noise
+% gsyn: CPG conductance; gfb: FB conductance
+% initials: initial condition; T0: period. Both are precalculated by CPG_FB_model.m
+switch type
+    case 'IR'  %inhibition-release
+        Ethresh=30;
+        Efb=-80;
+    case 'IE'  %inhibition-escape
+        Ethresh=0;
+        Efb=-80;
+    case 'ER'  %excitation-release
+        Ethresh=30;
+        Efb=80;
+    case 'EE'  %excitation-escape
+        Ethresh=0;
+        Efb=80;
+end
+
+%% parameters
+% CPG parameters
+Iapp=0.8;                      
+Vk=-80; Vl=-50; Vca=100;       
+gk=0.02; gl=0.005; gca=0.015; 
+c=1;                           
+E1=0; E3=0;    
+E2=15; E4=15;       
+Eslope=2;                     
+phi=0.0005;    
+Esyn=-80;
+% Muscle model parameters
+x10=0;              
+tau=2.45;                   
+beta=0.703;             
+a0=0.165;               
+g=2;                    
+F0=150;              
+b=4000;                
+% Feedback parameters
+Lslope=200;                   
+
+%% precondtion
+t0=0; 
+tF1=T0*4; tF2=T0*101; 
+
+[To,Po] = ode15s(@CPG_FB,t0:0.01:T0,initials,[],Iapp,gca,Vca,gk,Vk,gl,Vl,c,gsyn,Esyn,phi,E1,E2,E3,E4,Ethresh,Eslope,g,a0,tau,beta,F0,b,gfb,Efb,x10,Lslope);
+xo=Po(:,7);
+r=find(xo==max(xo));  
+P1=Po(r(end),:);  % find the point with the maximal postion on the unperturbed limit cycle
+
+%% calculate external noise
+initials1 = P1;
+initials2 = [ones(1,6),1.1].*initials1; %apply 10% perturbation to the x-direction
+
+[Tl,Pl] = ode15s(@CPG_FB,t0:0.01:T0,initials1,[],Iapp,gca,Vca,gk,Vk,gl,Vl,c,gsyn,Esyn,phi,E1,E2,E3,E4,Ethresh,Eslope,g,a0,tau,beta,F0,b,gfb,Efb,x10,Lslope);
+xl=Pl(:,7);
+[Tp,Pp] = ode15s(@CPG_FB,t0:0.01:tF1,initials2,[],Iapp,gca,Vca,gk,Vk,gl,Vl,c,gsyn,Esyn,phi,E1,E2,E3,E4,Ethresh,Eslope,g,a0,tau,beta,F0,b,gfb,Efb,x10,Lslope);
+xp=Pp(:,7);
+zl=zeros(length(Tl),1); zp=zeros(length(Tp),1);
+for i=2:length(Tl)
+     zl(i)=(xl(i)-xl(i-1))/0.01;
+end
+for i=2:length(Tp)
+     zp(i)=(xp(i)-xp(i-1))/0.01;
+end
+
+ex=abs((min(zp)-min(zl))/min(zl));
+
+%% calculate internal noise
+V10=P1(1); V20=P1(2);
+N10=P1(3); N20=P1(4);
+A10=P1(5); A20=P1(6);
+x0=P1(7); 
+
+%% solve
+minf = @(x) 0.5*(1+tanh((x-E1)/E2));
+winf = @(x) 0.5*(1+tanh((x-E3)/E4));
+tauw = @(x) 1/cosh((x-E3)/(2*E4));
+sinffw = @(x) 0.5*(1+tanh((x-Ethresh)/Eslope));
+sinffb = @(x) 1-0.5*tanh((x-x10)/Lslope); %1-0.5*tanh((x-x10)/Lslope) for contraction; 0.5*(1+tanh(x-x10)/Lslope) for stretching
+
+dt=0.01;
+T=[t0:dt:tF2]';
+V1=zeros(length(T),1); V2=zeros(length(T),1); 
+N1=zeros(length(T),1); N2=zeros(length(T),1);
+A1=zeros(length(T),1); A2=zeros(length(T),1); 
+x=zeros(length(T),1); z=zeros(length(T),1);
+V1(1)=V10; V2(1)=V20; 
+N1(1)=N10; N2(1)=N20;
+A1(1)=A10; A2(1)=A20; 
+x(1)=x0; 
+
+for i=2:length(T)
+    
+    L1 = 50+0.8*x(i-1); L2 = 50-0.8*x(i-1);
+    Isyn1 = gsyn*sinffw(V2(i-1))*(V1(i-1)-Esyn);
+    Isyn2 = gsyn*sinffw(V1(i-1))*(V2(i-1)-Esyn);
+    Ifb1 = gfb*sinffb(L2)*(V1(i-1)-Efb);   
+    Ifb2 = gfb*sinffb(L1)*(V2(i-1)-Efb);   
+    
+    V1(i) = V1(i-1)+dt*(Iapp-gca*minf(V1(i-1))*(V1(i-1)-Vca)-gk*N1(i-1)*(V1(i-1)-Vk)-gl*(V1(i-1)-Vl)-Isyn1-Ifb1)/c+0.2*gfb*(V1(i-1)-Efb)*sqrt(sinffb(L2)*(1-sinffb(L2)))*sqrt(dt)*randn/c; %internal noise in the feedback signal
+    V2(i) = V2(i-1)+dt*(Iapp-gca*minf(V2(i-1))*(V2(i-1)-Vca)-gk*N2(i-1)*(V2(i-1)-Vk)-gl*(V2(i-1)-Vl)-Isyn2-Ifb2)/c;
+    N1(i) = N1(i-1)+dt*phi*(winf(V1(i-1))-N1(i-1))/tauw(V1(i-1));
+    N2(i) = N2(i-1)+dt*phi*(winf(V2(i-1))-N2(i-1))/tauw(V2(i-1));
+    
+    u1 = (1/2)*V1(i-1); u2 = (1/2)*V2(i-1);
+    U1 = (1.03-4.31*exp(-0.198*u1))*(u1>=8);
+    U2 = (1.03-4.31*exp(-0.198*u2))*(u2>=8);
+    LT1 = -5.27*10^(-4)*L1^2+0.1054*L1-4.27;
+    LT2 = -5.27*10^(-4)*L2^2+0.1054*L2-4.27;
+    a1 = g*(A1(i-1)-a0); a2 = g*(A2(i-1)-a0);
+    F1 = (F0*a1*LT1)*(u1>=8)*(a1>=0); 
+    F2 = (F0*a2*LT2)*(u2>=8)*(a2>=0);
+    
+    A1(i) = A1(i-1)+dt*(1/tau)*(U1-(beta+(1-beta)*U1)*A1(i-1));
+    A2(i) = A2(i-1)+dt*(1/tau)*(U2-(beta+(1-beta)*U2)*A2(i-1));
+    x(i) = x(i-1)+dt*(1/b)*(F2-F1); 
+    z(i) = (x(i)-x(i-1))/dt;
+    
+end
+
+mark0=zeros(length(T),1);
+for i=2:length(T)-1
+    if (x(i)>0)&&(((x(i)>=x(i-1))&&(x(i)>x(i+1)))||((x(i)>x(i-1))&&(x(i)>=x(i+1))))
+            mark0(i)=i;   
+    end
+end
+mark=find(mark0~=0);
+Q0=mark(2:end)-mark(1:end-1);
+Q=find(Q0>60000);  
+
+es=0;
+for k=1:100
+    e(k)=(x(mark(Q(k)+1))-max(xl))/max(xl);
+    es=es+e(k);
+end
+ea=es/100;
+va=0;
+for k=1:100
+    va=va+(e(k)-ea)^2;
+end
+in=sqrt(va/100);
+
+end
