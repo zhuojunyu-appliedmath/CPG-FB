@@ -1,15 +1,15 @@
-% To plot Fig. 17(b) from precomputed data ee_multiplier.mat
-% In the uniform range [0:0.0004:0.014]¡Á[0:0.0004:0.012], ee_multiplier.mat records the data of the magnitude of the second multiplier.
-% In the area without ability to generate stable periodic orbits, set magnitude=-0.05.
+% To plot Fig. 17(b) from precomputed data ie_internal.mat
+% In the uniform range [0:0.0004:0.014]¡Á[0:0.0004:0.012], ie_internal.mat records the response to internal noise.
+% In the area without ability to generate stable periodic orbits, set the response=-0.0014.
 
-load ee_multiplier.mat
+load ie_internal.mat
 
 figure(1)
-imagesc(-ee_multiplier) %to make the area with larger magnitude darker, plot reversely
+imagesc(-ie_internal) %to make the area with larger response darker, plot reversely
 
 colormap(hot)
 h=colorbar;
-set(h,'YTick',-0.8:0.2:0,'YTicklabel',0.8:-0.2:0)
+set(h,'YTick',-0.05:0.01:0,'YTicklabel',0.05:-0.01:0)
 set(h,'direction','reverse')
 
 clear gca

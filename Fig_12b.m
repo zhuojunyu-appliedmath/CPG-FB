@@ -1,15 +1,15 @@
-% To plot Fig. 21(b) from precomputed data ee_multiplier.mat
-% In the uniform range [0:0.0004:0.014]¡Á[0:0.0004:0.012], ee_multiplier.mat records the data of the magnitude of the second multiplier.
+% To plot Fig. 12(b) from precomputed data ie_multiplier.mat
+% In the uniform range [0:0.0004:0.014]¡Á[0:0.0004:0.012], ie_multiplier.mat records the data of the magnitude of the second multiplier.
 % In the area without ability to generate stable periodic orbits, set magnitude=-0.05.
 
-load ee_multiplier.mat
+load ie_multiplier.mat
 
 figure(1)
-imagesc(-ee_multiplier) %to make the area with larger magnitude darker, plot reversely
+imagesc(-ie_multiplier) %to make the area with larger magnitude darker, plot reversely
 
 colormap(hot)
 h=colorbar;
-set(h,'YTick',-0.8:0.2:0,'YTicklabel',0.8:-0.2:0)
+set(h,'YTick',-0.9:0.2:-0.1,'YTicklabel',0.9:-0.2:0.1)
 set(h,'direction','reverse')
 
 clear gca

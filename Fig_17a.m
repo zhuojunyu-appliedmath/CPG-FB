@@ -1,15 +1,15 @@
-% To plot Fig. 17(a) from precomputed data ee_period.mat
-% In the uniform range [0:0.0004:0.014]¡Á[0:0.0004:0.012], ee_period.mat records the period data.
-% In the area without ability to generate stable periodic orbits, set period=1100.
+% To plot Fig. 17(a) from precomputed data ie_external.mat
+% In the uniform range [0:0.0004:0.014]¡Á[0:0.0004:0.012], ie_external.mat records the response to external perturbation.
+% In the area without ability to generate stable periodic orbits, set the response=0.0165.
 
-load ee_period.mat
+load ie_external.mat
 
 figure(1)
-imagesc(-ee_period) %to make the area with larger period darker, plot reversely
+imagesc(-ie_external) %to make the area with larger response darker, plot reversely
 
 colormap(hot)
 h=colorbar;
-set(h,'YTick',-8000:2000:-2000,'YTicklabel',8000:-2000:2000)
+set(h,'YTick',-0.05:0.01:-0.02,'YTicklabel',0.05:-0.01:0.02)
 set(h,'direction','reverse')
 
 clear gca
